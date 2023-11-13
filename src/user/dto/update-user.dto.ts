@@ -1,4 +1,3 @@
-import {IsDateString, IsEmail} from 'class-validator';
 
 export class UpdateUserDto {
   full_name: string;

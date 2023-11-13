@@ -1,19 +1,19 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import {HttpStatus, Injectable} from '@nestjs/common';
+import {JwtService} from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Model } from 'mongoose';
-import { TimeToLive } from 'src/enums';
-import { ExceptionResponse } from 'src/exceptions/common.exception';
-import { User } from 'src/models/user.model';
-import { RegisterDto } from './dto/register.dto';
-import { InjectModel } from '@nestjs/mongoose';
-import { LoginDto } from './dto/login.dto';
-import { Verify } from 'src/models/verify.model';
-import { UtilCommonTemplate } from 'src/utils/utils.common';
-import { SmsService } from 'src/sms/sms.service';
-import { QueueService } from 'src/queue/queue.service';
-import { VerifyDto } from './dto/verify.dto';
-import { UserStatus } from 'src/constants';
+import {Model} from 'mongoose';
+import {TimeToLive} from 'src/enums';
+import {ExceptionResponse} from 'src/exceptions/common.exception';
+import {User} from 'src/models/user.model';
+import {RegisterDto} from './dto/register.dto';
+import {InjectModel} from '@nestjs/mongoose';
+import {LoginDto} from './dto/login.dto';
+import {Verify} from 'src/models/verify.model';
+import {UtilCommonTemplate} from 'src/utils/utils.common';
+import {SmsService} from 'src/sms/sms.service';
+import {QueueService} from 'src/queue/queue.service';
+import {VerifyDto} from './dto/verify.dto';
+import {UserStatus} from 'src/constants';
 import {ChangePasswordDto} from './dto/change-password.dto';
 
 @Injectable()
@@ -47,11 +47,11 @@ export class AuthService {
   }
 
   async getUser(phone: string): Promise<User> | null {
-    return this.userModel.findOne({ phone: phone }).populate("school_id").lean();
+    return this.userModel.findOne({phone: phone}).populate("school_id").lean();
   }
 
   async register(data: RegisterDto): Promise<any> {
-    const { full_name: fullName, phone, password } = data;
+    const {full_name: fullName, phone, password} = data;
 
     const userExist = await this.getUser(phone);
 
@@ -79,7 +79,7 @@ export class AuthService {
   }
 
   async login(body: LoginDto) {
-    const { phone, password } = body;
+    const {phone, password} = body;
 
     const user = await this.getUser(phone);
 
@@ -117,7 +117,7 @@ export class AuthService {
       .findOne()
       .populate({
         path: 'user_id',
-        match: { _id: userId },
+        match: {_id: userId},
       })
       .lean();
 
@@ -139,7 +139,7 @@ export class AuthService {
     await this.smsService.sendSMS(
       `+84${user.phone.slice(1)}`,
       `Ma xac thuc Veli cua ban la: ${otpCode} (co hieu luc 1 phut)`
-      );
+    );
 
     const newVerify = await this.verifyModel.create({
       user_id: user._id,
@@ -170,14 +170,87 @@ export class AuthService {
     await this.verifyModel.findByIdAndDelete(verify._id);
     await this.userModel.findByIdAndUpdate(
       userId,
-      { status: UserStatus.Active }
+      {status: UserStatus.Active}
     );
 
     return null;
   }
 
+  async verifyUpdatePass(phone: string, body: VerifyDto) {
+    const {otp_code: otpCode} = body;
+    const user = await this.getUser(phone);
+
+    if (!user) {
+      throw new ExceptionResponse(HttpStatus.BAD_REQUEST, "Số điện thoại chưa được đăng ký")
+    }
+
+    const verify = await this.verifyModel.findOne({
+      otp_code: otpCode,
+      user_id: user?._id,
+    });
+
+    if (!verify || !user)
+      throw new ExceptionResponse(
+        HttpStatus.BAD_REQUEST,
+        'Mã OTP không chính xác',
+      );
+
+    await this.verifyModel.findByIdAndDelete(verify._id);
+
+    return null;
+  }
+
+  async forgotPassword(phone: string) {
+    const user = await this.getUser(phone);
+
+    if (!user) {
+      throw new ExceptionResponse(HttpStatus.BAD_REQUEST, "Số điện thoại chưa được đăng ký")
+    }
+
+    const otpCode = UtilCommonTemplate.generateOTP();
+    await this.smsService.sendSMS(
+      `+84${phone.slice(1)}`,
+      `Ma xac thuc dat lai mat khau Veli cua ban la: ${otpCode} (co hieu luc 1 phut)`
+    );
+
+    const newVerify = await this.verifyModel.create({
+      user_id: user._id,
+      otp_code: otpCode,
+    });
+
+    await this.queueService.addJob(
+      'delete-expired-otp',
+      newVerify.toObject(),
+      TimeToLive.OneMinuteMillisecond
+    );
+  }
+
+  async updateForgotPassword(phone: string, body: any) {
+    const {password = ''} = body;
+
+    const user = await this.getUser(phone);
+
+    if (!user) {
+      throw new ExceptionResponse(HttpStatus.BAD_REQUEST, "Số điện thoại chưa được đăng ký")
+    }
+
+    if (password.length < 6) {
+      throw new ExceptionResponse(HttpStatus.BAD_REQUEST, "Mật khẩu phải tối thiểu 6 ký tự")
+    };
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await this.userModel.findByIdAndUpdate(
+      user._id,
+      {
+        password: hashedPassword
+      }
+    );
+
+    return null;
+
+  }
+
   async changePassword(userId: string, body: ChangePasswordDto) {
-    console.log(`File: src/auth/auth.service.ts - Line: 180: `, body)
     const {
       old_password: oldPassword,
       new_password: newPassword,
@@ -206,10 +279,10 @@ export class AuthService {
     await this.userModel.findByIdAndUpdate(
       userId,
       {
-        password: hashedPassword 
+        password: hashedPassword
       }
     );
-    
+
     return null;
   }
 }

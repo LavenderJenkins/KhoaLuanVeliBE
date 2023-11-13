@@ -23,7 +23,7 @@ export class UserService {
 
   async update(userId: string, body: UpdateUserDto) {
     const user = await this.userModel.findById(userId).lean();
-    const { date_of_birth: dateOfBirth } = body;
+    const { date_of_birth: dateOfBirth, avatar } = body;
     if (!moment(dateOfBirth, "DD/MM/YYYY").isValid()) {
       throw new ExceptionResponse(HttpStatus.BAD_REQUEST, "Ngày sinh không hợp lệ")
     }
@@ -34,6 +34,7 @@ export class UserService {
       userId, 
       { 
         ...body,
+        ...(avatar && { avatar }),
         ...(dateOfBirth && { date_of_birth: moment(dateOfBirth, "DD/MM/YYYY").toDate()})
       }, 
       { new: true }

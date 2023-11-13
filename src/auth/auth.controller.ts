@@ -40,7 +40,45 @@ export class AuthController {
     @Body() body: ChangePasswordDto, @Res() res: Response) {
     try {
       const data = await this.authService.changePassword(userId, body);
-      return res.status(HttpStatus.OK).send(new BaseResponse({ data, message: "Cập nhật mật khẩu thành công" }));
+      return res.status(HttpStatus.OK).send(new BaseResponse({data, message: "Cập nhật mật khẩu thành công"}));
+    } catch (e) {
+      throw new CatchException(e);
+    }
+  }
+
+  @Post('forgot-password/:phone')
+  async updateForgotPassword(
+    @Param('phone') phone: string,
+    @Body() body: any, @Res() res: Response) {
+    try {
+      const data = await this.authService.updateForgotPassword(phone, body);
+      return res.status(HttpStatus.OK).send(new BaseResponse({data, message: "Cập nhật mật khẩu thành công"}));
+    } catch (e) {
+      throw new CatchException(e);
+    }
+  }
+
+  @Get('forgot-password/:phone')
+  async forgotPassword(
+    @Param('phone') phone: string,
+    @Res() res: Response) {
+    try {
+      const data = await this.authService.forgotPassword(phone);
+      return res.status(HttpStatus.OK).send(new BaseResponse({data, message: "Đã gửi mã OTP đến số điện thoại của bạn"}));
+    } catch (e) {
+      throw new CatchException(e);
+    }
+  }
+  
+  @Post("verify-update-pass/:phone")
+  async verifyUpdatePass(
+    @Param('phone') phone: string,
+    @Body() body: VerifyDto,
+    @Res() res: Response
+  ) {
+    try {
+      const data = await this.authService.verifyUpdatePass(phone, body);
+      return res.status(HttpStatus.OK).send(new BaseResponse({data, message: "Xác minh tài khoản thành công"}));
     } catch (e) {
       throw new CatchException(e);
     }

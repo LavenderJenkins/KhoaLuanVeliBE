@@ -1,0 +1,9 @@
+./dist
+./node_modules
+./mongodb
+./redis
+./public
+./github
+./docker
+./.idea
+./.vscode/*

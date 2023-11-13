@@ -114,9 +114,6 @@ export class DocumentService {
 
     if (school_id || subject_id || search) {
       conditions.$or = [];
-      if (user_id) {
-        conditions.$or.push({created_by: user_id});
-      }
       if (school_id) {
         conditions.$or.push({school_id: school_id});
       }
@@ -132,6 +129,10 @@ export class DocumentService {
           ],
         });
       }
+    }
+
+    if (user_id) {
+      conditions.created_by = user_id;
     }
 
     if (price_from && price_to) {
